@@ -237,12 +237,6 @@ class DxlComm(object):
         '''
         self.packet_handler.write1ByteTxRx(self.port_handler, BROADCAST_ID, ADDR_MX_TORQUE_ENABLE, 0)
 
-    def get_angles(self, radian=False):
-        ''' This method read the current angle
-        of all servos attached to this channel
-        (This is sequential, not sync_read!)
-        '''
-
     def set_goal_value(self, angle, radian=False):
         '''Sets goal value (0 to 1024), from given goal angle.
         '''
