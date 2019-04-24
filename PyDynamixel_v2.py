@@ -174,15 +174,16 @@ class DxlComm(object):
 
         self.group_sync_write.clearParam() # clears buffer
 
-    def read_angles(self):
+    def get_angles(self, radian=False):
         ''' Read angles from all attached joints.
-        Only availabel in Protocol 2.0'''
+        Only available in Protocol 2.0'''
         if PROTOCOL_VERSION == 2:
-            servos_position = self._sync_read(ADDR_MX_PRESENT_POSITION, LEN_MX_PRESENT_POSITION)
-            return servos_position
+            servos_angles = self._sync_read(ADDR_MX_PRESENT_POSITION, LEN_MX_PRESENT_POSITION, radian=radian)
+            return servos_angles
         else:
-            print("This uses sync read, which is only available in Protocol 2.0")
-            return False
+            # no sync read for Protocol 1.0
+            for joint in self.joints:
+                joint.get_angle(radian=radian)
 
     def _sync_read(self, addr, info_len):
         ''' Sync read. Only available in Protocol 2.0
@@ -209,7 +210,10 @@ class DxlComm(object):
                 else:
                     dxl_present_position = self.group_sync_read.getData(servo_id, addr, info_len)
                     # put the returned value into a dict with all values and in the joints curr_value variable
-                    present_angle = (180*dxl_present_position)/2048.0
+                    if radian:
+                        present_angle = (pi*dxl_present_position)/2048.0
+                    else:
+                        present_angle = (180*dxl_present_position)/2048.0
                     servos_position[servo_id] = present_angle
                     self.joints[i].curr_value = present_angle
 
@@ -238,8 +242,6 @@ class DxlComm(object):
         of all servos attached to this channel
         (This is sequential, not sync_read!)
         '''
-        for joint in self.joints:
-            joint.get_angle(radian=radian)
 
     def set_goal_value(self, angle, radian=False):
         '''Sets goal value (0 to 1024), from given goal angle.
@@ -292,7 +294,7 @@ class Joint(object):
             self.goal_value = int(2048.0*angle/180) + self.center_value
         self.changed = True
 
-    def send_angle(self, goal_angle, radian=False):
+    def send_angle(self, angle, radian=False):
         ''' Sends a command to this specific servomotor to set
         its goal value from a degree or radian goal angle.
         Usage:
@@ -304,7 +306,7 @@ class Joint(object):
             send_angle()
         '''
         if goal_angle >= 0:
-            self.set_goal_value(goal_angle, radian=radian)
+            self.set_goal_value(angle, radian=radian)
         dxl_comm_result, dxl_error = self.packet_handler.write4ByteTxRx(self.port_handler, self.servo_id, ADDR_MX_GOAL_POSITION, self.goal_value)
 
         if dxl_comm_result != COMM_SUCCESS:
@@ -321,7 +323,7 @@ class Joint(object):
         '''
         self.curr_value, dxl_comm_result, dxl_error = self.packet_handler.read4ByteTxRx(self.port_handler, self.servo_id, ADDR_MX_PRESENT_POSITION)
 
-        self.curr_value -= self.center_value
+        #self.curr_value -= self.center_value #TODO implement this in other functions
 
         if dxl_comm_result != COMM_SUCCESS:
             print("%s" % self.packet_handler.getTxRxResult(dxl_comm_result))
