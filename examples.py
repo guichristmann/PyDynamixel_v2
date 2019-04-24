@@ -50,7 +50,7 @@ def sync_write():
 def sync_read():
     # Sync Read of all attached joints. Only in Protocol 2.0
     print("Sync read test")
-    angles = serial.read_angles()
+    angles = serial.get_angles()
     print(angles)
 
 def all_pings():
