@@ -8,7 +8,7 @@ baudrate = 1000000
 serial = pd.DxlComm(port=port, baudrate=baudrate)
 
 # Declare a dynamixel joint
-dyn_id = 2
+dyn_id = 31
 dyn = pd.Joint(dyn_id)
 
 # Attach this joint to DxlComm to enable serial communication
@@ -29,23 +29,20 @@ def write():
     print("Single joint write test")
     for i in range(50, 90, 10):
         dyn.send_angle(i)
-        sleep(1) # due to low baudrate, this is needed
         print("Set/Current angle: {}/{}".format(i, dyn.get_angle()))
-        sleep(1)
 
 def sync_write():
     # Sync write of all attached joints, or just a few (more details in code docs)
     print("Sync write test")
     for i in range(50, 90, 10): # Send angles as degrees
-        serial.send_angles(values=[i])
-        sleep(1)                # due to low baudrate, this is needed
+        serial.send_angles(values={dyn_id: i})
+        sleep(0.1)
         print("Set/Current angle: {}/{}".format(i, dyn.get_angle()))
-        sleep(1)
+    sleep(1)
     # Angles can be sent as radians too
-    serial.send_angles(values=[pi/3], radian=True)
-    sleep(1)
+    serial.send_angles(values={dyn_id: pi/3}, radian=True)
+    sleep(0.1)
     print("Set/Current angle: {}/{}".format("pi/3 ", dyn.get_angle()))
-    sleep(1)
 
 def sync_read():
     # Sync Read of all attached joints. Only in Protocol 2.0

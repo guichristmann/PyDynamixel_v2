@@ -10,7 +10,7 @@ from dynamixel_sdk import *
 from math import pi
 import sys
 
-PROTOCOL_VERSION                = 1
+PROTOCOL_VERSION                = 2
 
 # MX-28 table
 if PROTOCOL_VERSION == 1:
@@ -90,6 +90,7 @@ class DxlComm(object):
         self.joint_ids.append(joint.servo_id)
         joint._set_port_and_packet(self.port_handler, self.packet_handler)
         self.total = self.total + 1
+        self.joint_ids.sort()
 
     def broadcast_ping(self): # CHECK
         ''' Broadcast ping to all attached joints.
@@ -118,20 +119,20 @@ class DxlComm(object):
             print("Broadcast Ping only available for Protocol 2.0.")
             return False
 
-    def send_angles(self, values=None, radian=False): # CHECK
+    def send_angles(self, values=None, radian=False):
         ''' Sends goal position with sync write to all or desired servos.
 
         If no values are sent, then it gets which servos to send goal values to from
         their 'changed' param, which was modified by each joint set_goal_value() function.
 
-        The 'values' list should have the name length of current connected joints.
+        The 'values' dict should have the name length of current connected joints.
         Therefore, if you chose to send through the 'values' way, you will send angles
         to all connected dynamixels.
 
         Usage: (assuming 3 attached joints)
-            self.send_angles([90, 30, 60])
+            self.send_angles({dyn1_id: 90, dyn3_id: 30, dyn2_id: 60})
             OR
-            self.send_angles([pi/2, pi/6, pi/3], radian=True)
+            self.send_angles({dyn3_id: pi/2, dyn2_id: pi/6, dyn1_id: pi/3}, radian=True)
             OR
             self.joints[0].set_goal_value(90) OR self.joints[0].set_goal_value(pi/2, radian=True)
             self.send_angles()
@@ -143,8 +144,11 @@ class DxlComm(object):
             for i in ch_joints:
                 i.changed = False
         else:
-            if isinstance(values, list) and len(values) == len(self.joint_ids):
-                self._sync_write(values=values, radian=radian)
+            if isinstance(values, dict): #this needs further checking
+                list_values = [values[i] for i in sorted(values)] # sort dict by joint id
+                if len(list_values) == len(self.joint_ids):
+                    # list_values is sorted as is serial.joint_ids (from lowest to highest id)
+                    self._sync_write(values=list_values, radian=radian)
             else:
                 print("Make sure the values parameter is a list of the same length of connected dynamixels.")
 
@@ -185,7 +189,7 @@ class DxlComm(object):
             for joint in self.joints:
                 joint.get_angle(radian=radian)
 
-    def _sync_read(self, addr, info_len):
+    def _sync_read(self, addr, info_len, radian=False):
         ''' Sync read. Only available in Protocol 2.0
         '''
         if PROTOCOL_VERSION == 2:
