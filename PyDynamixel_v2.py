@@ -271,6 +271,7 @@ class Joint(object):
         '''
         self.servo_id = servo_id
         self.center_value = center_value
+        self.goal_angle = -1
 
     def _set_port_and_packet(self, port_handler, packet_handler):
         ''' This sets this joint's packet and port handlers to be equal to DxlComm ones.
@@ -303,7 +304,7 @@ class Joint(object):
             set_goal_value(90) OR set_goal_value(pi/2, radian=True)
             send_angle()
         '''
-        if goal_angle >= 0:
+        if angle >= 0:
             self.set_goal_value(angle, radian=radian)
         dxl_comm_result, dxl_error = self.packet_handler.write4ByteTxRx(self.port_handler, self.servo_id, ADDR_MX_GOAL_POSITION, self.goal_value)
 
