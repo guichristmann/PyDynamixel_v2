@@ -17,13 +17,15 @@ if PROTOCOL_VERSION == 1:
     ADDR_MX_TORQUE_ENABLE       = 24    # Address for torque enable
     ADDR_MX_PRESENT_POSITION    = 36    # Address for the current position
     ADDR_MX_GOAL_POSITION       = 30    # Address for goal position
+    LEN_MX_GOAL_POSITION        = 2     # MX's have different message lengths in Protocol 1 vs. 2
+                                        # and protocol 1.0 does not use present_position length
 elif PROTOCOL_VERSION == 2:
     ADDR_MX_TORQUE_ENABLE       = 64    # Address for torque enable
     ADDR_MX_PRESENT_POSITION    = 132   # Address for the current position
     ADDR_MX_GOAL_POSITION       = 116   # Address for goal position
+    LEN_MX_GOAL_POSITION        = 4
+    LEN_MX_PRESENT_POSITION     = 4
 
-LEN_MX_GOAL_POSITION    = 4
-LEN_MX_PRESENT_POSITION = 4
 
 class DxlComm(object):
     ''' This class implements low level
@@ -197,7 +199,8 @@ class DxlComm(object):
                 # add all servos to sync read request
                 dxl_add_param_result = self.group_sync_read.addParam(servo_id)
                 if dxl_add_param_result != COMM_SUCCESS:
-                    print("[ID: %03d] groupSyncRead addParam failed." % servo_id)
+                    #print("[ID: %03d] groupSyncRead addParam failed." % servo_id)
+                    pass
 
             # SyncRead present position
             dxl_comm_result = self.group_sync_read.txRxPacket()
@@ -304,8 +307,8 @@ class Joint(object):
             set_goal_value(90) OR set_goal_value(pi/2, radian=True)
             send_angle()
         '''
-        if angle >= 0:
-            self.set_goal_value(angle, radian=radian)
+        #if angle >= 0:
+        self.set_goal_value(angle, radian=radian)
         dxl_comm_result, dxl_error = self.packet_handler.write4ByteTxRx(self.port_handler, self.servo_id, ADDR_MX_GOAL_POSITION, self.goal_value)
 
         if dxl_comm_result != COMM_SUCCESS:
@@ -320,7 +323,10 @@ class Joint(object):
         stored in both self.curr_angle and self.curr_value.
         However, only self.curr_angle is retorned by this function.
         '''
-        self.curr_value, dxl_comm_result, dxl_error = self.packet_handler.read4ByteTxRx(self.port_handler, self.servo_id, ADDR_MX_PRESENT_POSITION)
+        if PROTOCOL_VERSION == 1:
+            self.curr_value, dxl_comm_result, dxl_error = self.packet_handler.read2ByteTxRx(self.port_handler, self.servo_id, ADDR_MX_PRESENT_POSITION)
+        elif PROTOCOL_VERSION == 2:
+            self.curr_value, dxl_comm_result, dxl_error = self.packet_handler.read4ByteTxRx(self.port_handler, self.servo_id, ADDR_MX_PRESENT_POSITION)
 
         #self.curr_value -= self.center_value #TODO implement this in other functions
 
@@ -370,6 +376,7 @@ class Joint(object):
             print("%s" % self.packet_handler.getRxPacketError(dxl_error))
         else:
             print("[ID: %03d] ping succeeded. Model number: %d" % (self.servo_id, dxl_model_number))
+            return self.servo_id
 
     def reboot(self): # check
         ''' Reboots this joint.
