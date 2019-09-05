@@ -10,7 +10,7 @@ from dynamixel_sdk import *
 from math import pi
 import sys
 
-PROTOCOL_VERSION                = 2
+PROTOCOL_VERSION                = 1
 
 # MX-28 table
 if PROTOCOL_VERSION == 1:
@@ -47,7 +47,7 @@ class DxlComm(object):
             self.baudrate = baudrate
         elif baudnum:
             # Baudnum selected in dynamixel config in RoboPlus Software
-            self.baudrate = 20000000/(baudnum + 1)
+            self.baudrate = 2000000/(baudnum + 1)
         else:
             self.baudrate = 57600
 
