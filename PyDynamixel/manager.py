@@ -335,7 +335,7 @@ class DxlComm(object):
         # Send it
         dxl_comm_result = self.group_bulk_read.txRxPacket()
         if dxl_comm_result != COMM_SUCCESS:
-            raise RuntimeError("%s" % packetHandler.getTxRxResult(dxl_comm_result))
+            raise RuntimeError("%s" % self.packet_handler.getTxRxResult(dxl_comm_result))
 
         # Check that data is received
         for m_id in ids:

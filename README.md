@@ -1,17 +1,12 @@
 # PyDynamixel_v2
 Python interface to the Dynamixel protocol. Supports both Protocols 1 and 2 using Dynamixel SDK python library.
 
-Default is MX-28 control table.
-
 ## Requirements
 PySerial:
 ```
 pip install pyserial
 ```
-Dynamixel SDK python library: 
-```
-https://github.com/ROBOTIS-GIT/DynamixelSDK
-```
+[Dynamixel SDK python library](https://github.com/ROBOTIS-GIT/DynamixelSDK)
 
 ## Before Usage - Maximize reading and writing speed
 
@@ -30,55 +25,110 @@ Check if it worked.
 cat /sys/bus/usb-serial/devices/ttyUSB0/latency_timer
 ```
 
-If you encounter problems with reading and writing speeds, making use of a time.sleep(0.1) often helps
+## Usage and Examples
 
-## Usage
-
-teste.py script has main functionalities, but basically:
-
-Create a DxlComm instance, the Joint instances, and then attach them to the first.
-```
-import PyDynamixel_v2 as pd
-from math import pi
-
-serial = pd.DxlComm(port='/dev/ttyUSB0', baudrate=1000000)
-joint1 = pd.Joint(servo_id=1)
-joint2 = pd.Joint(servo_id=2)
-
-serial.attach_joints([joint1, joint2])
-```
-
-Get list of attached joints. It is sorted from lowest to highest id value.
+To install the module simply run
 
 ```
-serial.joint_ids
+python setup.py install
 ```
 
-Enable joint torques and then move them with sync write (send_angles function).
-You should send the values as a dict. The dict values are then sent to each of the dynamixels.
+The control tables for each motor, describing addresses and lengths are in `DynamixelControlTables.py`. The only motors implemented right now are MX-28 (for Protocol 1.0 and 2.0) and RH8D hand from Seed robotics (Protocol 1.0). If you want to add more motors just edit that file referencing the Dynamixel manuals and add the entry to the `ctrltables_str_mappings` variable.
+The Sync and Bulk operations will only work if all motors attached to the port have the same control table.
+
+#### Instantiating a single MX28 with Protocol 1.0 and reading present position:
+
 ```
-serial.enable_joints()
-serial.send_angles({joint1: 90, joint2: 20}) 
-  # send these degrees in the same order as the joints were attached
-  # joint1 = 90 degrees, joint2 = 20 degrees
-serial.send_angles({joint1: pi/2, joint2: pi/3}, radian=True) # angles can be sent as radians too
+import PyDynamixel as pd
+
+# Parameters
+baudnum = 1 # baudrate is calculated as 2Mbps / (baudnum+1)
+protocol_version = 1
+motor_id = 10
+
+# Create the port object
+port = pd.DxlComm("/dev/ttyUSB0", baudnum=baudnum, protocol_version=protocol_version)
+# Create the joint object. Control table for MX28 Protocol 1.0
+joint = pd.Joint(motor_id, control_table="MX28-1")
+
+# Attach joint to port
+port.attach_joint(joint)
+
+# Read current angle
+curr_angle = joint.get_angle()
+print(f"[{motor_id}]: {curr_angle:.2f}")
 ```
 
-Read joints current position angle. Protocol 2.0 uses sync read.
+#### Instantiating a single MX28 with Protocol 2.0 and reading present position:
+
 ```
-angles = serial.get_angles()
-  # the radian flag also works here
-angles = serial.get_angles(radian=radian)
+import PyDynamixel as pd
+
+# Parameters
+baudnum = 1 # baudrate is calculated as 2Mbps / (baudnum+1)
+protocol_version = 2
+motor_id = 10
+
+# Create the port object
+port = pd.DxlComm("/dev/ttyUSB0", baudnum=baudnum, protocol_version=protocol_version)
+
+# Create the joint object. Control table for MX28 Protocol 2.0
+joint = pd.Joint(motor_id, control_table="MX28-2")
+
+# Attach joint to port
+port.attach_joint(joint)
+
+# Read current angle
+curr_angle = joint.get_angle()
+print(f"[{motor_id}]: {curr_angle:.2f}")
 ```
 
-There are also individual read and write functions.
+#### Instantiating several MX28 Protocol 1.0 and reading present position sequentially:
+
 ```
-joint1.get_angle()
-joint1.send_angle(pi/2, radian=True)
+import PyDynamixel as pd
+
+# Parameters
+baudnum = 1 # baudrate is calculated as 2Mbps / (baudnum+1)
+protocol_version = 1
+
+# Create the port object
+port = pd.DxlComm("/dev/ttyUSB0", baudnum=baudnum, protocol_version=protocol_version)
+
+# Use this so you don't need to specify it every time Joint() is called
+pd.setDefaultCtrlTable("MX28-1")
+joints = [pd.Joint(1), pd.Joint(2), pd.Joint(3), pd.Joint(4)]
+
+port.attach_joints(joints)
+
+for joint in joints:
+    curr_angle = joint.get_angle()
+    print(f"[{joint.servo_id}]: {curr_angle:.2f}")
 ```
 
-There are two ping functions, individual and broadcast. Broadcast is only available within Protocol 2.0
+#### Instantiating several MX28 Protocol 1.0 and performing bulk read for present position:
+
 ```
-serial.broadcast_ping()
-joint1.ping()
+import PyDynamixel as pd
+
+# Parameters
+baudnum = 1 # baudrate is calculated as 2Mbps / (baudnum+1)
+protocol_version = 1
+
+# Create the port object
+port = pd.DxlComm("/dev/ttyUSB0", baudnum=baudnum, protocol_version=protocol_version)
+
+# Use this so you don't need to specify it every time Joint() is called
+pd.setDefaultCtrlTable("MX28-1")
+joints = [pd.Joint(1), pd.Joint(2), pd.Joint(3), pd.Joint(4)]
+
+port.attach_joints(joints)
+
+# Bulk read joints 1 and 2
+angles = port.bulk_read_present_position(ids=[1, 2])
+print(angles)
+
+# Bulk read all attached joints
+angles = port.bulk_read_present_position()
+print(angles)
 ```
