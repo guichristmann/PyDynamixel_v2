@@ -10,7 +10,7 @@ PyDynamixel library.
 # Dynamixel functions
 from dynamixel_sdk import *
 # Control tables for different types of motors
-from DynamixelControlTables import *
+from .DynamixelControlTables import *
 from math import pi
 import sys
 
@@ -106,7 +106,12 @@ class DxlComm(object):
                     self.packet_handler, 
                     self.ref_table.ADDR_PRESENT_POSITION, 
                     self.ref_table.LEN_PRESENT_POSITION)
+        elif self.protocol_version == 1:
+            # Use bulk read for protocol 1.0 instead
+            self.group_bulk_read = GroupBulkRead(self.port_handler,
+                    self.packet_handler)
 
+        # Sync write works for both 1.0 and 2.0
         self.group_sync_write = GroupSyncWrite(self.port_handler, 
                 self.packet_handler, 
                 self.ref_table.ADDR_GOAL_POSITION, 
@@ -218,7 +223,7 @@ class DxlComm(object):
 
         self.group_sync_write.clearParam() # clears buffer
 
-    def sync_write_goal_positions(self):
+    def sync_write_goal_position(self):
         """
             Sync writes the ``.goal_value'' for all the joints attached to the 
             port.
@@ -301,6 +306,59 @@ class DxlComm(object):
         else:
             print("Sync Read is only available in Protocol 2.0.")
             return False
+
+    def bulk_read_present_position(self, ids=[], radian=RADIAN):
+        """
+        Bulk reads the present position of the motors specified in the list of
+        ids
+        
+        Arguments:
+            ids: list of IDs of the motors.
+
+        """
+
+        if self.protocol_version == 2:
+            print("[INFO] Manager is running on protocol 2.0, you can use \
+                    sync_read instad.")
+
+        if ids == []:
+            ids = self.joint_ids
+
+        # Mount the bulk read message
+        for m_id in ids:
+            addparam_result = self.group_bulk_read.addParam(m_id, 
+                    self.ref_table.ADDR_PRESENT_POSITION, 
+                    self.ref_table.LEN_PRESENT_POSITION)
+            if addparam_result != True: 
+                raise RuntimeError("[ID:%03d] groupBulkRead addparam failed" % m_id)
+
+        # Send it
+        dxl_comm_result = self.group_bulk_read.txRxPacket()
+        if dxl_comm_result != COMM_SUCCESS:
+            raise RuntimeError("%s" % packetHandler.getTxRxResult(dxl_comm_result))
+
+        # Check that data is received
+        for m_id in ids:
+            getdata_res = self.group_bulk_read.isAvailable(m_id,
+                    self.ref_table.ADDR_PRESENT_POSITION,
+                    self.ref_table.LEN_PRESENT_POSITION)
+            if getdata_res != True:
+                raise RuntimeError("[ID:%03d] groupBulkRead getdata failed" % m_id)
+
+        # Retrieve data
+        ppositions = []
+        for m_id in ids:
+            data = self.group_bulk_read.getData(m_id, 
+                    self.ref_table.ADDR_PRESENT_POSITION, 
+                    self.ref_table.LEN_PRESENT_POSITION)
+            if radian:
+                data = (pi*data)/2048.0
+            else:
+                data = (180*data)/2048.0
+            ppositions.append(data)
+
+        self.group_bulk_read.clearParam()
+        return ppositions
 
     def enable_torques(self):
         ''' Enable torque for all motors connected

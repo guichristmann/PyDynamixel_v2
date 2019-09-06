@@ -1,2 +1,5 @@
+build/
+dist/
+PyDynamixel.egg-info/
 *.swp
 *.pyc
