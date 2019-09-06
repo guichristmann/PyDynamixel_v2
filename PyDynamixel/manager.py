@@ -219,7 +219,7 @@ class DxlComm(object):
 
         dxl_comm_result = self.group_sync_write.txPacket() # sync write
         if dxl_comm_result != COMM_SUCCESS:
-            print("%s" % self.packetHandler.getTxRxResult(dxl_comm_result))
+            print("%s" % self.packet_handler.getTxRxResult(dxl_comm_result))
 
         self.group_sync_write.clearParam() # clears buffer
 
@@ -229,7 +229,8 @@ class DxlComm(object):
             port.
         """
 
-        for j in self.joints:
+        set_joints = [j for j in self.joints if j.set_goal]
+        for j in set_joints:
             if self.ref_table.LEN_GOAL_POSITION == 2:
                 param_goal_position = [DXL_LOBYTE(j.goal_value), DXL_HIBYTE(j.goal_value)]
                 j_id = j.servo_id
@@ -247,9 +248,12 @@ class DxlComm(object):
                 if dxl_add_param_result != True:
                     print("[ID: %03d] groupSyncWrite addParam failed" % j_id)
 
+            # Unset flag
+            j.set_goal = False
+
         dxl_comm_result = self.group_sync_write.txPacket()
         if dxl_comm_result != COMM_SUCCESS:
-            print("%s" % self.packetHandler.getTxRxResult(dxl_comm_result))
+            print("%s" % self.packet_handler.getTxRxResult(dxl_comm_result))
 
         self.group_sync_write.clearParam() # clears buffer
 
@@ -330,11 +334,13 @@ class DxlComm(object):
                     self.ref_table.ADDR_PRESENT_POSITION, 
                     self.ref_table.LEN_PRESENT_POSITION)
             if addparam_result != True: 
+                self.group_bulk_read.clearParam()
                 raise RuntimeError("[ID:%03d] groupBulkRead addparam failed" % m_id)
 
         # Send it
         dxl_comm_result = self.group_bulk_read.txRxPacket()
         if dxl_comm_result != COMM_SUCCESS:
+            self.group_bulk_read.clearParam()
             raise RuntimeError("%s" % self.packet_handler.getTxRxResult(dxl_comm_result))
 
         # Check that data is received
@@ -343,6 +349,7 @@ class DxlComm(object):
                     self.ref_table.ADDR_PRESENT_POSITION,
                     self.ref_table.LEN_PRESENT_POSITION)
             if getdata_res != True:
+                self.group_bulk_read.clearParam()
                 raise RuntimeError("[ID:%03d] groupBulkRead getdata failed" % m_id)
 
         # Retrieve data
@@ -417,6 +424,8 @@ class Joint(object):
         self.servo_id = servo_id
         self.center_value = center_value
         self.goal_angle = -1
+        # Used to flag joints for sync_write
+        self.set_goal = False
 
     def _set_port_and_packet(self, port_handler, packet_handler, protocol_version):
         ''' This sets this joint's packet and port handlers to be equal to DxlComm ones.
@@ -437,7 +446,7 @@ class Joint(object):
             self.goal_value = int(2048.0*angle/pi) + self.center_value
         else:
             self.goal_value = int(2048.0*angle/180) + self.center_value
-        self.changed = True
+        self.set_goal = True
 
     def send_angle(self, angle, radian=RADIAN):
         ''' Sends a command to this specific servomotor to set
@@ -451,19 +460,21 @@ class Joint(object):
             send_angle()
         '''
         #if angle >= 0:
-        self.set_goal_value(angle, radian=radian)
+        if radian:
+            goal_value = int(2048.0*angle/pi) + self.center_value
+        else:
+            goal_value = int(2048.0*angle/180) + self.center_value
 
         # Check length to choose how many bytes to write
         if self.table.LEN_GOAL_POSITION == 4:
-            dxl_comm_result, dxl_error = self.packet_handler.write4ByteTxRx(self.port_handler, self.servo_id, self.table.ADDR_GOAL_POSITION, self.goal_value)
+            dxl_comm_result, dxl_error = self.packet_handler.write4ByteTxRx(self.port_handler, self.servo_id, self.table.ADDR_GOAL_POSITION, goal_value)
         elif self.table.LEN_GOAL_POSITION == 2:
-            dxl_comm_result, dxl_error = self.packet_handler.write2ByteTxRx(self.port_handler, self.servo_id, self.table.ADDR_GOAL_POSITION, self.goal_value)
+            dxl_comm_result, dxl_error = self.packet_handler.write2ByteTxRx(self.port_handler, self.servo_id, self.table.ADDR_GOAL_POSITION, goal_value)
 
         if dxl_comm_result != COMM_SUCCESS:
             print("%s" % self.packet_handler.getTxRxResult(dxl_comm_result))
         elif dxl_error:
             print("%s" % self.packet_handler.getRxPacketError(dxl_error))
-        # precisa fazer changed = false?
 
     def get_angle(self, radian=RADIAN):
         ''' Reads the current position of this
