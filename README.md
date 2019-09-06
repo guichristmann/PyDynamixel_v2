@@ -38,7 +38,7 @@ The Sync and Bulk operations will only work if all motors attached to the port h
 
 #### Instantiating a single MX28 with Protocol 1.0 and reading present position:
 
-```
+```python
 import PyDynamixel as pd
 
 # Parameters
@@ -61,7 +61,7 @@ print(f"[{motor_id}]: {curr_angle:.2f}")
 
 #### Instantiating a single MX28 with Protocol 2.0 and reading present position:
 
-```
+```python
 import PyDynamixel as pd
 
 # Parameters
@@ -85,7 +85,7 @@ print(f"[{motor_id}]: {curr_angle:.2f}")
 
 #### Instantiating several MX28 Protocol 1.0 and reading present position sequentially:
 
-```
+```python
 import PyDynamixel as pd
 
 # Parameters
@@ -108,7 +108,7 @@ for joint in joints:
 
 #### Instantiating several MX28 Protocol 1.0 and performing bulk read for present position:
 
-```
+```python
 import PyDynamixel as pd
 
 # Parameters
@@ -132,3 +132,27 @@ print(angles)
 angles = port.bulk_read_present_position()
 print(angles)
 ```
+
+#### Instantiating several MX28 Protocol 1.0 and performing sync write of goal position:
+
+```python
+import PyDynamixel as pd
+
+# Parameters
+baudnum = 1 # baudrate is calculated as 2Mbps / (baudnum+1)
+protocol_version = 1
+
+# Create the port object
+port = pd.DxlComm("/dev/ttyUSB0", baudnum=baudnum, protocol_version=protocol_version)
+
+# Use this so you don't need to specify it every time Joint() is called
+pd.setDefaultCtrlTable("MX28-1")
+port.attach_joints([pd.Joint(1), pd.Joint(2), pd.Joint(3), pd.Joint(4), pd.Joint(5)])
+
+# Set goal value in joint object. This does NOT send any messages, just changes
+# value of the object in memory
+for j in port.joints:
+    j.set_goal_value(3.14)
+
+# Sends the goal_value of each joint object to the actual motors
+port.sync_write_goal_position()
