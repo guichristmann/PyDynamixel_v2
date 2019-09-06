@@ -409,7 +409,7 @@ class Joint(object):
         if type(control_table) == str:
             valids = list(ctrltables_str_mappings.keys())
             if control_table not in valids:
-                raise ValueError(f"Unrecognized control table ``{control_table}''. Valids: {valids}")
+                raise ValueError("Unrecognized control table ``{}''. Valids: {}" % (control_table, valids))
             self.table = ctrltables_str_mappings[control_table]
         else: # Assume the control table object was passed directly
             self.table = control_table
