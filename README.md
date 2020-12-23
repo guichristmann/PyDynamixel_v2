@@ -6,7 +6,12 @@ PySerial:
 ```
 pip install pyserial
 ```
-[Dynamixel SDK python library](https://github.com/ROBOTIS-GIT/DynamixelSDK)
+Dynamixel SDK:
+```
+git clone https://github.com/ROBOTIS-GIT/DynamixelSDK
+cd python
+python setup.py install
+```
 
 ## Before Usage - Maximize reading and writing speed
 
