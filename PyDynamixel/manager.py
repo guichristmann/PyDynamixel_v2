@@ -49,9 +49,9 @@ class DxlComm(object):
 
         if baudrate:
             self.baudrate = baudrate
-        elif baudnum:
+        elif baudnum != None:
             # Baudnum selected in dynamixel config in RoboPlus Software
-            self.baudrate = 2000000/(baudnum + 1)
+            self.baudrate = int(2000000/(baudnum + 1))
         else:
             self.baudrate = 57600
 
